@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Biología Interactiva con Animaciones</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: #e0f2fe;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #0284c7;
+      color: white;
+      font-weight: 700;
+      font-size: 1.8rem;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(2,132,199,0.5);
+    }
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      min-height: 0;
+    }
+    nav {
+      background: #0369a1;
+      width: 220px;
+      padding: 1rem;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      user-select: none;
+    }
+    nav button {
+      background: #0284c7;
+      border: none;
+      padding: 0.7rem 1rem;
+      font-size: 1rem;
+      color: white;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s;
+    }
+    nav button.active,
+    nav button:hover {
+      background: #0ea5e9;
+    }
+    section.content {
+      flex: 1;
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      position: relative;
+      background: white;
+      box-shadow: inset 0 0 10px #a0c9f2;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    h2 {
+      color: #0369a1;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .bubble-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .bubble {
+      width: 120px;
+      height: 120px;
+      background: #0284c7;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      padding: 0.8rem;
+      transition: transform 0.3s, background-color 0.3s;
+      user-select: none;
+      box-shadow: 0 5px 15px rgba(2, 132, 199, 0.5);
+    }
+    .bubble:hover {
+      background: #0ea5e9;
+      transform: scale(1.1);
+      box-shadow: 0 7px 20px rgba(14, 165, 233, 0.7);
+    }
+    .explanation {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #dbeafe;
+      border-left: 4px solid #0284c7;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      color: #0369a1;
+      min-height: 100px;
+      user-select: text;
+    }
+    #canvas {
+      margin-top: 1rem;
+      border-radius: 15px;
+      border: 1px solid #bae6fd;
+      background: #e0f2fe;
+      width: 100%;
+      height: 280px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>Biología Interactiva con Animaciones</header>
+  <main>
+    <nav aria-label="Menú de secciones">
+      <button class="active" data-section="transporte">Transporte Celular</button>
+      <button data-section="fotosintesis">Fotosíntesis</button>
+      <button data-section="respiracion">Respiración Planta</button>
+      <button data-section="biomoleculas">Biomoléculas</button>
+      <button data-section="metabolismo">Metabolismo Celular</button>
+    </nav>
+    <section class="content" tabindex="0" aria-live="polite" aria-atomic="true">
+      <h2>Selecciona un tema</h2>
+      <p>Hacé clic en los botones para ver contenido e interactuar.</p>
+      <canvas id="canvas" aria-label="Área de animación"></canvas>
+      <div id="dynamic-content"></div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const contentDiv = document.getElementById("dynamic-content");
+    const buttons = document.querySelectorAll("nav button");
+    let animationId;
+    let animState = 0;
+
+    // Ajusta tamaño canvas
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // Datos texto + burbujas
+    const sectionsData = {
+      transporte: {
+        title: "Transporte Celular",
+        bubbles: [
+          { label: "Pasivo", desc: "Movimiento sin energía, siguiendo el gradiente, como difusión y ósmosis." },
+          { label: "Activo", desc: "Movimiento contra gradiente que requiere energía (ATP)." }
+        ],
+        animated: true
+      },
+      fotosintesis: {
+        title: "Fotosíntesis",
+        bubbles: [
+          { label: "Etapa Lumínica", desc: "Captura de energía solar para dividir agua y liberar oxígeno." },
+          { label: "Etapa Oscura", desc: "Transforma CO₂ en glucosa usando energía almacenada." }
+        ],
+        animated: true
+      },
+      respiracion: {
+        title: "Respiración Planta",
+        bubbles: [
+          { label: "Aeróbica", desc: "Descompone glucosa usando oxígeno para generar ATP." },
+          { label: "Mitocondria", desc: "Lugar principal donde ocurre la respiración celular." }
+        ],
+        animated: true
+      },
+      biomoleculas: {
+        title: "Biomoléculas",
+        bubbles: [
+          { label: "Proteínas", desc: "Estructura, enzimas y transporte." },
+          { label: "Lípidos", desc: "Reserva energética y membranas." },
+          { label: "Carbohidratos", desc: "Fuente rápida de energía." },
+          { label: "Ácidos Nucleicos", desc: "Información genética (ADN y ARN)." }
+        ],
+        animated: false
+      },
+      metabolismo: {
+        title: "Metabolismo Celular",
+        bubbles: [
+          { label: "Anabolismo", desc: "Construcción de moléculas complejas, requiere energía." },
+          { label: "Catabolismo", desc: "Degradación de moléculas para liberar energía." }
+        ],
+        animated: false
+      }
+    };
+
+    function clearAnimation() {
+      if(animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.display = "none";
+      animState = 0;
+    }
+
+    function drawBubble(label, index) {
+      const div = document.createElement("div");
+      div.className = "bubble";
+      div.tabIndex = 0;
+      div.textContent = label;
+      div.dataset.index = index;
+      return div;
+    }
+
+    function loadSection(key) {
+      clearAnimation();
+      const section = sectionsData[key];
+      contentDiv.innerHTML = `<h2>${section.title}</h2>`;
+      const container = document.createElement("div");
+      container.className = "bubble-container";
+
+      section.bubbles.forEach((b, i) => {
+        const bubble = drawBubble(b.label, i);
+        container.appendChild(bubble);
+      });
+
+      contentDiv.appendChild(container);
+
+      const explanation = document.createElement("div");
+      explanation.className = "explanation hidden";
+      explanation.id = "explanation-box";
+      contentDiv.appendChild(explanation);
+
+      // Mostrar explicación al hacer clic o Enter en burbujas
+      container.querySelectorAll(".bubble").forEach(bubble => {
+        bubble.addEventListener("click", () => {
+          const idx = bubble.dataset.index;
+          explanation.textContent = section.bubbles[idx].desc;
+          explanation.classList.remove("hidden");
+          if(section.animated && key !== "biomoleculas" && key !== "metabolismo") {
+            startAnimation(key, section.bubbles[idx].label.toLowerCase());
+          } else {
+            clearAnimation();
+          }
+        });
+        bubble.addEventListener("keydown", e => {
+          if(e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            bubble.click();
+          }
+        });
+      });
+
+      if(section.animated) {
+        canvas.style.display = "block";
+        resizeCanvas();
+        // Animación por defecto en la primer burbuja
+        explanation.textContent = section.bubbles[0].desc;
+        explanation.classList.remove("hidden");
+        startAnimation(key, section.bubbles[0].label.toLowerCase());
+      } else {
+        clearAnimation();
+      }
+    }
+
+    // Animaciones específicas
+
+    // --- Transporte ---
+    let transportePos = 0;
+    function animateTransporte(type) {
+      if(!canvas.style.display || canvas.style.display === "none") return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+
+      // Dibuja membrana simple
+      ctx.fillStyle = "#0284c7";
+      ctx.fillRect(w * 0.15, h * 0.35, w * 0.7, h * 0.1);
+      ctx.fillRect(w * 0.15, h * 0.55, w * 0.7, h * 0.1);
+
+      // Fosfolípidos
+      for(let i=0; i<16; i++) {
+        ctx.beginPath();
+        ctx.arc(w * 0.15 + i * 40, h * 0.4, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = "rgba(255,255,255,0.6)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(w * 0.15 + i * 40, h * 0.6, 7, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // Moléculas
+      transportePos += 2;
+      if(transportePos > w * 0.7) transportePos = 0;
+
+      function drawMolecule(x, y, color) {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.arc(x, y, 14, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      if(type === "pasivo") {
+        // Movimiento lado a lado a favor del gradiente
+        drawMolecule(w * 0.15 + transportePos, h * 0.4, "orange");
+        drawMolecule(w * 0.85 - transportePos, h * 0.6, "yellow");
+
+        // Flecha gradiente
+        ctx.strokeStyle = "#eab308";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.25, h * 0.3);
+        ctx.lineTo(w * 0.75, h * 0.3);
+        ctx.lineTo(w * 0.7, h * 0.25);
+        ctx.moveTo(w * 0.75, h * 0.3);
+        ctx.lineTo(w * 0.7, h * 0.35);
+        ctx.stroke();
+
+      } else if(type === "activo") {
+        // Movimiento en contra del gradiente con destellos ATP
+        drawMolecule(w * 0.85 - transportePos, h * 0.4, "red");
+        drawMolecule(w * 0.15 + transportePos, h * 0.6, "purple");
+
+        // Flecha contraria
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.75, h * 0.3);
+        ctx.lineTo(w * 0.25, h * 0.3);
+        ctx.lineTo(w * 0.3, h * 0.25);
+        ctx.moveTo(w * 0.25, h * 0.3);
+        ctx.lineTo(w * 0.3, h * 0.35);
+        ctx.stroke();
+
+        if(transportePos % 20 < 10) {
+          ctx.fillStyle = "yellow";
+          ctx.beginPath();
+          ctx.arc(w * 0.5, h * 0.2, 12, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.fillStyle = "black";
+          ctx.font = "bold 14px Verdana";
+          ctx.fillText("ATP", w * 0.48, h * 0.23);
+        }
+      }
+
+      animationId = requestAnimationFrame(() => animateTransporte(type));
+    }
+
+    // --- Fotosíntesis ---
+    let fotosState = 0;
+    function animateFotosintesis(stage) {
+      if(!canvas.style.display || canvas.style.display === "none") return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+
+      // Dibuja hoja
+      ctx.fillStyle = "#4ade80";
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h / 2, 220, 140, Math.PI / 6, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Sol
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(w * 0.15, h * 0.15, 55, 0, 2 * Math.PI);
+      ctx.fill();
+
+      for(let i=0; i<8; i++) {
+        const angle = i * Math.PI / 4;
+        const x1 = w * 0.15 + Math.cos(angle) * 70;
+        const y1 = h * 0.15 + Math.sin(angle) * 70;
+        const x2 = w * 0.15 + Math.cos(angle) * 90;
+        const y2 = h * 0.15 + Math.sin(angle) * 90;
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      // Moléculas animadas
+      fotosState += 1;
+
+      function drawMolecule(x, y, color, label) {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 10;
+        ctx.arc(x, y, 14, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if(label) {
+          ctx.fillStyle = "white";
+          ctx.font = "bold 14px Verdana";
+          ctx.fillText(label, x - ctx.measureText(label).width / 2, y + 5);
+        }
+      }
+
+      if(stage === "etapa lumínica" || stage === "etapa luminica") {
+        // Agua subiendo (azul) y oxígeno saliendo (rojo)
+        const baseX = w * 0.3;
+        const baseY = h * 0.75;
+        for(let i=0; i<5; i++) {
+          const offsetX = Math.sin((fotosState + i * 20) * 0.1) * 12;
+          const y = baseY - ((fotosState + i * 30) % 160);
+          drawMolecule(baseX + offsetX, y, "#3b82f6", "H₂O");
+        }
+
+        const oxyX = w * 0.7;
+        const oxyY = h * 0.3;
+        for(let j=0; j<3; j++) {
+          const offsetX = Math.cos((fotosState + j * 30) * 0.1) * 10;
+          const y = oxyY - ((fotosState + j * 40) % 160);
+          drawMolecule(oxyX + offsetX, y, "#f87171", "O₂");
+        }
+
+      } else if(stage === "etapa oscura") {
+        // CO2 entrando y glucosa brillando
+        const co2X = w * 0.7;
+        const co2Y = h * 0.75;
+        for(let i=0; i<4; i++) {
+          const offsetX = Math.sin((fotosState + i * 25) * 0.1) * 11;
+          const y = co2Y - ((fotosState + i * 40) % 180);
+          drawMolecule(co2X + offsetX, y, "#14b8a6", "CO₂");
+        }
+
+        const glow = 0.6 + 0.4 * Math.sin(fotosState * 0.12);
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(132, 
